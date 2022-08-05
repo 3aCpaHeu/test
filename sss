@@ -1,73 +1,67 @@
-import { FreeCost } from "../api/Costs";
-import { game } from "../api/Game";
-import { Permissions } from "../api/Permissions"
-import { theory } from "../api/Theory";
+import { ExponentialCost, FreeCost, LinearCost } from "./api/Costs";
+import { Localization } from "./api/Localization";
+import { BigNumber } from "./api/BigNumber";
+import { theory } from "./api/Theory";
+import { Utils } from "./api/Utils";
 
-// You can access various properties of the game using the 'game' instance.
-// You can query values of the game (variables, upgrades, currencies, etc.)
-// and you can perform the same actions as the user can do using the UI.
-// For reading values, no permissions are necessary. However, for performing
-// actions, you need to request permission to the player. If the player denies
-// the permission, the custom theory will not be installed.
-
-var id = "game_actions";
-var name = "Game Actions";
-var description = "An example of how to use the game object query values and perform actions on the game.";
-var authors = "Gilles-Philippe Paillé";
-var version = 1;
-var permissions = Permissions.PERFORM_GAME_ACTIONS
+var id = "nothing";
+var name = "aboba";
+var description = "idk";
+var authors = "me";
+var version = 0.1;
 
 var currency;
-var prestige, supremacy, graduation, buyVars, varAutoBuyer;
+var r;
+var x = BigNumber.from(0.5101);
 
 var init = () => {
     currency = theory.createCurrency();
 
-    // Prestige
+    //r
     {
-        prestige = theory.createUpgrade(0, currency, new FreeCost());
-        prestige.description = prestige.info = "Prestige"
-        prestige.bought = (_) => game.prestige();
+        let getDesc = (level) => "r=" + getR(level).toString(2);
+        let getInfo = (level) => "r=" + getR(level).toString(2);
+        r = theory.createUpgrade(0, currency, new FreeCost());
+        r.getDescription = (amount) => Utils.getMath(getDesc(r.level));
+        r.getInfo = (amount) => Utils.getMathTo(getInfo(r.level), getInfo(r.level + amount));
+        r.level = 200;
     }
 
-    // Supremacy
-    {
-        supremacy = theory.createUpgrade(1, currency, new FreeCost());
-        supremacy.description = supremacy.info = "Supremacy"
-        supremacy.bought = (_) => game.supremacy();
-    }
+    theory.createPublicationUpgrade(0, currency, 0.5);
+    theory.createBuyAllUpgrade(1, currency, 0.5);
+    theory.createAutoBuyerUpgrade(2, currency, 0.5);
 
-    // Graduation
-    {
-        graduation = theory.createUpgrade(2, currency, new FreeCost());
-        graduation.description = graduation.info = "Graduation"
-        graduation.bought = (_) => game.graduate();
-    }
+    updateAvailability();
+}
 
-    // Buy All Variables
-    {
-        buyVars = theory.createUpgrade(3, currency, new FreeCost());
-        buyVars.description = buyVars.info = "Buy All Variables"
-        buyVars.bought = (_) => game.buy(game.variables);
-    }
-
-    // Toggle Variable Autobuyer
-    {
-        varAutoBuyer = theory.createUpgrade(4, currency, new FreeCost());
-        varAutoBuyer.description = varAutoBuyer.info = "Toggle Variable Autobuyer"
-        varAutoBuyer.bought = (_) => game.automation.variables.isActive = !game.automation.variables.isActive;
-    }
+var updateAvailability = () => {
+    
 }
 
 var tick = (elapsedTime, multiplier) => {
-    theory.invalidatePrimaryEquation();
+    let bonus = theory.publicationMultiplier;
+    x = getR(r.level)*x*(1-x)
+    currency.value = bonus * x;
+
+    theory.invalidateTertiaryEquation();
+}
+
+var postPublish = () => {
+    x = 0.5101;
 }
 
 var getPrimaryEquation = () => {
-    let result = "";
-    result += "f(t) = " + game.f.toString(4) + "\\\\";
-    result += "d\\psi = " + game.dpsi.toString();
+    let result = "x_n_+_1 = rx_n(1-x_n)";
     return result;
 }
+
+var getSecondaryEquation = () => "\\rho =x," + theory.latexSymbol + "=\\max\\rho";
+
+var getPublicationMultiplier = (tau) => tau.pow(2)+1;
+var getPublicationMultiplierFormula = (symbol) => "{" + symbol + "}^{2}";
+var getTau = () => currency.value;
+var get2DGraphValue = () => (currency.value.abs()).toNumber();
+
+var getR = (level) => BigNumber.from(level*0.01);
 
 init();
